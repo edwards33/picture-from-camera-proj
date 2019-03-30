@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <title>WebRTC</title>
+    </head>
+    <body>
+        <div>
+            Video: <select id="camera"></select>
+        </div>
+        <p>
+            <button id="take-picture" type="button" autofocus="true">
+                Get Profile Picture
+            </button>
+        </p>
+        <video id="video" autoplay ></video>
+
+        <canvas id="pic-canvas" style="display: none;"></canvas>
+
+        <div>
+            <img id="profile-picture">
+        </div>
+
+        <script>
+
+            const onSuccess = (stream) => {
+                console.log('Success with Video Stream!')
+                video.srcObject = stream
+                videoArea.play()
+            }
+
+            const onError = (err) => {
+                console.log(`Error with getUserMedia: ${err}`)
+            }
+
+
+            var videoArea = document.querySelector('video')
+            var videoSelect = document.querySelector('#camera')
+            var profilePicCanvas = document.querySelector("#pic-canvas")
+            var profilePicOutput = document.querySelector("#profile-picture")
+            var takePicButton = document.querySelector("#take-picture")
+            var videoTag = document.querySelector("#video")
+
+            var width = 640 //Desied width of the profile picture
+            var height = 0 //Calculated later based on image ratio
+            var streaming = false
+
+            takePicButton.addEventListener('click', function(event) {
+                takeProfilePic()
+                event.preventDefault()
+            }, false)
+
+            videoTag.addEventListener('canplay', function(event){
+                if(!streaming){
+                    height = videoTag.videoHeight / (videoTag.videoWidth/width)
+
+                    videoTag.setAttribute('width', width)
+                    videoTag.setAttribute('height', height)
+                    profilePicCanvas.setAttribute('width', width)
+                    profilePicCanvas.setAttribute('height', height)
+                    streaming = true
+                }
+            }, false)
+
+            function takeProfilePic(){
+                var context = profilePicCanvas.getContext('2d')
+                if(width && height){
+                    profilePicCanvas.width = width
+                    profilePicCanvas.height = height
+                    context.drawImage(videoTag, 0, 0, width, height)
+
+                    var data = profilePicCanvas.toDataURL('image/png')
+                    profilePicOutput.setAttribute('src', data)
+                }
+            }
+
+            navigator.mediaDevices.enumerateDevices().then(getCameras).catch((err) => {
+                console.log(`Error on List of Devices: ${err}`)
+            })
+
+            videoSelect.onchange = startStream;
+
+            startStream()
+
+            function getCameras(sourceInfos){
+                //console.log(sourceInfos)
+                for(let i = 0; i !== sourceInfos.length; i++){
+                    var sourceInfo = sourceInfos[i]
+                    var option = document.createElement('option')
+                    option.value = sourceInfo.id
+                    if(sourceInfo.kind.includes('video')){
+                        option.text = sourceInfo.label || 'camera' + (videoSelect.length + 1)
+                        videoSelect.appendChild(option)
+                    }
+                }
+            }
+
+            function startStream() {
+                navigator.getUserMedia = (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia ||
+                    navigator.msGetUserMedia)
+                var videoSource = videoSelect.value
+                var constraints = {
+                    audio: false,
+                    video: {
+                        mandatory: {
+                            minWidth: 640,
+                            maxWidth: 640,
+                            minHeight: 360,
+                            maxHeight: 360,
+                        },
+                        optional: [{
+                            sourceId: videoSource
+                        }]
+                    }
+                }
+
+                navigator.getUserMedia(constraints, onSuccess, onError)
+            }
+
+        </script>
+    </body>
+</html>
